@@ -23,6 +23,7 @@ namespace Xbox_Achievement_Unlocker
         public dynamic aJsonresponse;
         public HttpClient client = new HttpClient();
 
+
         public AchievementList()
         {
             InitializeComponent();
@@ -31,6 +32,16 @@ namespace Xbox_Achievement_Unlocker
             typingTimer.Interval = 500;
             typingTimer.Tick += TypingTimer_Tick;
         }
+        // New constructor that takes a game name
+        public AchievementList(string gameName, string gamertagValue, string gamerscoreValue)
+        {
+            InitializeComponent();
+            LBL_GamertagValue.Text = gamertagValue;
+            LBL_GamerscoreValue.Text = gamerscoreValue;
+            this.Text = TitleID + " - Achievements";
+            MessageBox.Show(gameName, "Game Name Debug");
+        }
+
         string currentSystemLanguage = System.Globalization.CultureInfo.CurrentCulture.Name;
         public List<string> AchievementIDs = new List<string>();
         string SCID;
@@ -126,6 +137,19 @@ namespace Xbox_Achievement_Unlocker
                             if (searchbox.Text.Length > 0)
                                 if (!aJsonresponse.achievements[i].name.ToString().ToLowerInvariant().Contains(searchbox.Text.ToLowerInvariant()))
                                     continue;
+                            // check if UnlockedTime is null
+
+                            string unlockedTime; // Declare the variable here
+                            DateTime dateTimeUnlocked;
+                            if (DateTime.TryParse(aJsonresponse.achievements[i].progression.timeUnlocked?.ToString(), out dateTimeUnlocked)
+                                && dateTimeUnlocked != DateTime.MinValue)
+                            {
+                                unlockedTime = dateTimeUnlocked.ToString();
+                            }
+                            else
+                            {
+                                unlockedTime = "Locked";
+                            }
 
                             DGV_AchievementList.Rows.Add(2,
                                 aJsonresponse.achievements[i].name.ToString(),
@@ -137,15 +161,29 @@ namespace Xbox_Achievement_Unlocker
                                 "\nSecret: " + aJsonresponse.achievements[i].isSecret.ToString() +
                                 "\nProgress State: " + aJsonresponse.achievements[i].progressState.ToString() +
                                 "\nUnlock Time: " + aJsonresponse.achievements[i].progression.timeUnlocked.ToString(),
+                                unlockedTime,
                                 Convert.ToInt32(aJsonresponse.achievements[i].id)
                             );
                         }
                         catch
                         {
+                            string unlockedTime; // Declare the variable here
+                            DateTime dateTimeUnlocked;
+                            if (DateTime.TryParse(aJsonresponse.achievements[i].progression.timeUnlocked?.ToString(), out dateTimeUnlocked)
+                                && dateTimeUnlocked != DateTime.MinValue)
+                            {
+                                unlockedTime = dateTimeUnlocked.ToString();
+                            }
+                            else
+                            {
+                                unlockedTime = "Locked";
+                            }
+
                             DGV_AchievementList.Rows.Add(0,
                                 aJsonresponse.achievements[i].name.ToString(),
                                 aJsonresponse.achievements[i].description.ToString(),
                                 "There was a problem grabbing stats for this achievement.\n\n\n\n\n",
+                                unlockedTime,
                                 Convert.ToInt32(aJsonresponse.achievements[i].id)
                             );
                         }
@@ -158,6 +196,18 @@ namespace Xbox_Achievement_Unlocker
 
                         try
                         {
+                            string unlockedTime; // Declare the variable here
+                            DateTime dateTimeUnlocked;
+                            if (DateTime.TryParse(aJsonresponse.achievements[i].progression.timeUnlocked?.ToString(), out dateTimeUnlocked)
+                                && dateTimeUnlocked != DateTime.MinValue)
+                            {
+                                unlockedTime = dateTimeUnlocked.ToString();
+                            }
+                            else
+                            {
+                                unlockedTime = "Locked";
+                            }
+
                             DGV_AchievementList.Rows.Add(0,
                                 aJsonresponse.achievements[i].name.ToString(),
                                 aJsonresponse.achievements[i].description.ToString(),
@@ -168,15 +218,29 @@ namespace Xbox_Achievement_Unlocker
                                 "%" +
                                 "\nSecret: " + aJsonresponse.achievements[i].isSecret.ToString() +
                                 "\nProgress State: " + aJsonresponse.achievements[i].progressState.ToString() + "\n",
+                                unlockedTime,
                                 Convert.ToInt32(aJsonresponse.achievements[i].id)
                             );
                         }
                         catch
                         {
+                            string unlockedTime; // Declare the variable here
+                            DateTime dateTimeUnlocked;
+                            if (DateTime.TryParse(aJsonresponse.achievements[i].progression.timeUnlocked?.ToString(), out dateTimeUnlocked)
+                                && dateTimeUnlocked != DateTime.MinValue)
+                            {
+                                unlockedTime = dateTimeUnlocked.ToString();
+                            }
+                            else
+                            {
+                                unlockedTime = "Locked";
+                            }
+
                             DGV_AchievementList.Rows.Add(0,
                                 aJsonresponse.achievements[i].name.ToString(),
                                 aJsonresponse.achievements[i].description.ToString(),
                                 "There was a problem grabbing stats for this achievement.\n\n\n\n\n",
+                                unlockedTime,
                                 Convert.ToInt32(aJsonresponse.achievements[i].id)
                             );
                         }
@@ -379,6 +443,26 @@ namespace Xbox_Achievement_Unlocker
         {
             typingTimer.Stop();
             PopulateAchievementList();
+        }
+
+        private void AchievementList_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void DGV_AchievementList_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void LBL_GamerscoreValue_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

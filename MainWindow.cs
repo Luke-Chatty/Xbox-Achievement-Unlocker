@@ -10,9 +10,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Memory;
+using Memory;
 using System.Threading;
 using System.Net.Http;
 using Newtonsoft.Json.Linq;
+using System.Drawing.Drawing2D;
 
 namespace Xbox_Achievement_Unlocker
 {
@@ -181,59 +183,15 @@ namespace Xbox_Achievement_Unlocker
 
             }
         }
-
-
-        public static string xuid;
-        public static string responseString;
-        AchievementList ALForm = new AchievementList();
-        public async void LoadAchievementList(object sender, EventArgs e)
+        private GraphicsPath GetRoundedRectanglePath(Rectangle rect, int cornerRadius)
         {
-            PictureBox SelectedGame = (sender as PictureBox);
-            
-            client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("x-xbl-contract-version", "4");
-            client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
-            client.DefaultRequestHeaders.Add("accept", "application/json");
-            client.DefaultRequestHeaders.Add("accept-language", currentSystemLanguage);
-            try
-            {
-                client.DefaultRequestHeaders.Add("Authorization", xauthtoken);
-            }
-            catch (Exception exception)
-            {
-                MessageBox.Show(
-                    "Couldnt find xauth. Go click the FuckyWucky Fixer button until this doesnt happen.");
-                return;
-            }
-            client.DefaultRequestHeaders.Add("Host", "achievements.xboxlive.com");
-            client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-            try
-            {
-                responseString = await client.GetStringAsync("https://achievements.xboxlive.com/users/xuid(" + xuid + ")/achievements?titleId=" + SelectedGame.Name.ToString() + "&maxItems=1000");
-                AchievementList ALForm = new AchievementList();
-                ALForm.Show();
-                client.DefaultRequestHeaders.Clear();
-                client.DefaultRequestHeaders.Add("x-xbl-contract-version", "4");
-                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
-                client.DefaultRequestHeaders.Add("accept", "application/json");
-                client.DefaultRequestHeaders.Add("accept-language", currentSystemLanguage);
-                client.DefaultRequestHeaders.Add("Authorization", MainWindow.xauthtoken);
-                client.DefaultRequestHeaders.Add("Host", "achievements.xboxlive.com");
-                client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                ALForm.aJsonresponse = (dynamic)(new JObject());
-                ALForm.aJsonresponse = (dynamic)JObject.Parse(responseString);
-                ALForm.PopulateAchievementList();
-            }
-            catch (HttpRequestException ex)
-            {
-
-                if ((int)ex.StatusCode == 401)
-                    MessageBox.Show("Couldnt find xauth. Go click the FuckyWucky Fixer button until this doesnt happen.", "401 Unauthorised");
-                else
-                    MessageBox.Show("something did a fucky wucky and I dont have a specific message for the error code", "fucky wucky");
-            }
-
-
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(rect.X, rect.Y, cornerRadius * 2, cornerRadius * 2, 180, 90);
+            path.AddArc(rect.X + rect.Width - cornerRadius * 2, rect.Y, cornerRadius * 2, cornerRadius * 2, 270, 90);
+            path.AddArc(rect.X + rect.Width - cornerRadius * 2, rect.Y + rect.Height - cornerRadius * 2, cornerRadius * 2, cornerRadius * 2, 0, 90);
+            path.AddArc(rect.X, rect.Y + rect.Height - cornerRadius * 2, cornerRadius * 2, cornerRadius * 2, 90, 90);
+            path.CloseFigure();
+            return path;
         }
 
         async void LoadInfo()
@@ -264,8 +222,19 @@ namespace Xbox_Achievement_Unlocker
                 var responseString = await client.GetStringAsync("https://profile.xboxlive.com/users/me/profile/settings?settings=Gamertag,Gamerscore");
                 var Jsonresponse = (dynamic)(new JObject());
                 Jsonresponse = (dynamic)JObject.Parse(responseString);
-                LBL_Gamertag.Text = "Gamertag: " + Jsonresponse.profileUsers[0].settings[0].value;
-                LBL_Gamerscore.Text = "Gamerscore: " + Jsonresponse.profileUsers[0].settings[1].value;
+                LBL_Gamertag.Text = "Gamertag: ";
+                LBL_Gamertag.Font = new Font(LBL_Gamertag.Font, FontStyle.Regular);  // Set unbold (regular) font for label
+
+                LBL_GamertagValue.Text = Jsonresponse.profileUsers[0].settings[0].value;
+                LBL_GamertagValue.Font = new Font(LBL_GamertagValue.Font, FontStyle.Bold);  // Set bold font for value
+
+                LBL_Gamerscore.Text = "Gamerscore: ";
+                LBL_Gamerscore.Font = new Font(LBL_Gamerscore.Font, FontStyle.Regular);  // Set unbold (regular) font for label
+
+                LBL_GamerscoreValue.Text = Jsonresponse.profileUsers[0].settings[1].value;
+                LBL_GamerscoreValue.Font = new Font(LBL_GamerscoreValue.Font, FontStyle.Bold);  // Set bold font for value
+
+
                 TXT_Xuid.Text = "XUID: " + Jsonresponse.profileUsers[0].id;
                 xuid = Jsonresponse.profileUsers[0].id;
                 BTN_SpoofGame.Enabled = true;
@@ -302,12 +271,16 @@ namespace Xbox_Achievement_Unlocker
                 var responseString = await client.GetStringAsync("https://titlehub.xboxlive.com/users/xuid(" + xuid + ")/titles/titleHistory/decoration/Achievement,scid");
                 var Jsonresponse = (dynamic)(new JObject());
                 Jsonresponse = (dynamic)JObject.Parse(responseString);
-                var count = 0;
+                int count = 0;
+
+                Panel_Recents.VerticalScroll.Visible = true;
+                Panel_Recents.AutoScroll = true;  // Set it outside the loop
                 const int itemWidth = 150;
-                const int rowHeight = 205;
-                int itemCountPerRow = 6;
+                const int rowHeight = 250;
+                int itemCountPerRow = 4;   // Set it to 5
                 int newline = 0;
                 int itemWidthWithMargin = 0;
+
                 for (int i = 0; i < Jsonresponse.titles.Count; i++)
                 {
                     dynamic title = Jsonresponse.titles[i];
@@ -323,41 +296,71 @@ namespace Xbox_Achievement_Unlocker
                         {
                             newline = newline + rowHeight;
                             count = 0;
+
                         }
                         PictureBox GameImage = new PictureBox();
                         GameImage.Location = new Point(itemWidthWithMargin * count, newline);
                         GameImage.Size = new Size(itemWidth, 150);
-                        if (count == 0)
-                            itemWidthWithMargin = GameImage.Width + GameImage.Margin.Left + GameImage.Margin.Right;
+
+
+                        itemWidthWithMargin = GameImage.Width + GameImage.Margin.Left + GameImage.Margin.Right + 100;
+
+
                         GameImage.SizeMode = PictureBoxSizeMode.StretchImage;
                         GameImage.ImageLocation = Jsonresponse.titles[i].displayImage.ToString() + "?w=512&h=512&format=jpg";
                         GameImage.Name = Jsonresponse.titles[i].titleId.ToString();
                         GameImage.Cursor = Cursors.Hand;
+                        int cornerRadius = 10;  // You can adjust this value for more/less curvature
+                        GameImage.Region = new Region(GetRoundedRectanglePath(new Rectangle(0, 0, GameImage.Width, GameImage.Height), cornerRadius));
                         GameImage.Click += new EventHandler(this.LoadAchievementList);
                         Panel_Recents.Controls.Add(GameImage);
+                        GameImage.Margin = new Padding(8);  // 10 is the space in pixels, you can adjust this value
+
                         //Create the dynamic TextBox.
                         TextBox textbox = new TextBox();
                         textbox.Location = new Point(itemWidthWithMargin * count, 150 + newline);
-                        textbox.Size = new Size(itemWidth, 20);
+                        textbox.Font = new Font(LBL_GamerscoreValue.Font, FontStyle.Bold);  // Set bold font for value
+                        textbox.BackColor = Panel_Recents.BackColor; // sets the background color to match the panel
+                        textbox.ForeColor = Color.White;  // change this to the desired font color, for example white
+                        textbox.Size = new Size(itemWidth, 40);
                         textbox.BorderStyle = BorderStyle.None;
-                        textbox.Margin = new Padding(textbox.Margin.Left + 2, 0, textbox.Margin.Right + 2, 0);
+                        //////textbox.Margin = new Padding(textbox.Margin.Left + 2, 0, textbox.Margin.Right + 2, 0);
                         textbox.ReadOnly = true;
                         textbox.Name = "txt_" + (count + 1);
                         textbox.Text = Jsonresponse.titles[i].name;
+                        textbox.Margin = new Padding(8);  // Again, adjust this value as needed
+
+                        Panel_Recents.Controls.Add(textbox);
+                        TextBox gamerscoreBox = new TextBox();
+                        gamerscoreBox.Location = new Point(itemWidthWithMargin * count, 174 + newline); // Positioned 30 pixels above the TitleID TextBox.
+                        gamerscoreBox.BackColor = Panel_Recents.BackColor; // sets the background color to match the panel
+                        gamerscoreBox.ForeColor = Color.White; // change this to the desired font color, for example white
+                        gamerscoreBox.Size = new Size(itemWidth, 30);
+                        gamerscoreBox.BorderStyle = BorderStyle.None;
+                        gamerscoreBox.ReadOnly = true;
+                        gamerscoreBox.Name = "gs_" + Jsonresponse.titles[i].modernTitleId;
+                        gamerscoreBox.Text = Jsonresponse.titles[i].achievement.currentGamerscore.ToString() + "/" + Jsonresponse.titles[i].achievement.totalGamerscore.ToString() + " (" + Jsonresponse.titles[i].achievement.progressPercentage.ToString() + "%)"; // Fetching the current Gamerscore
+                        gamerscoreBox.Margin = new Padding(8);  // Adjust this value as needed
+                        Panel_Recents.Controls.Add(gamerscoreBox);
+
                         Panel_Recents.Controls.Add(textbox);
                         TextBox titleidBox = new TextBox();
-                        titleidBox.Location = new Point(itemWidthWithMargin * count, 170 + newline);
-                        titleidBox.Size = new Size(itemWidth, 20);
+                        titleidBox.Location = new Point(itemWidthWithMargin * count, 190 + newline);
+                        titleidBox.BackColor = Panel_Recents.BackColor; // sets the background color to match the panel
+                        titleidBox.ForeColor = Color.White;  // change this to the desired font color, for example white
+                        titleidBox.Size = new Size(itemWidth, 30);
                         titleidBox.BorderStyle = BorderStyle.None;
                         titleidBox.ReadOnly = true;
                         titleidBox.Name = "txt_" + Jsonresponse.titles[i].modernTitleId;
                         titleidBox.Text = "TitleID: " + Jsonresponse.titles[i].modernTitleId;
+                        titleidBox.Margin = new Padding(8);  // Adjust this value as needed
                         Panel_Recents.Controls.Add(titleidBox);
 
-                        if (count == 0)
-                            // calculate how many items will fit the current width
-                            itemCountPerRow = Convert.ToInt32(Math.Floor(Convert.ToDouble(Panel_Recents.Width)
-                                / (itemWidth + GameImage.Margin.Left + GameImage.Margin.Right)));
+
+
+
+
+
 
                         count = count + 1;
                     }
@@ -371,6 +374,61 @@ namespace Xbox_Achievement_Unlocker
                     MessageBox.Show("something did a fucky wucky and I dont have a specific message for the error code", "fucky wucky");
             }
         }
+        public static string xuid;
+        public static string responseString;
+        AchievementList ALForm = new AchievementList();
+        public async void LoadAchievementList(object sender, EventArgs e)
+        {
+
+            PictureBox SelectedGame = (sender as PictureBox);
+
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("x-xbl-contract-version", "4");
+            client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
+            client.DefaultRequestHeaders.Add("accept", "application/json");
+            client.DefaultRequestHeaders.Add("accept-language", currentSystemLanguage);
+            try
+            {
+                client.DefaultRequestHeaders.Add("Authorization", xauthtoken);
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(
+                    "Couldnt find xauth. Go click the FuckyWucky Fixer button until this doesnt happen.");
+                return;
+            }
+            client.DefaultRequestHeaders.Add("Host", "achievements.xboxlive.com");
+            client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
+            try
+            {
+                responseString = await client.GetStringAsync("https://achievements.xboxlive.com/users/xuid(" + xuid + ")/achievements?titleId=" + SelectedGame.Name.ToString() + "&maxItems=1000");
+                AchievementList ALForm = new AchievementList(SelectedGame.Text, LBL_GamertagValue.Text, LBL_GamerscoreValue.Text);
+                ALForm.Show();
+                client.DefaultRequestHeaders.Clear();
+                client.DefaultRequestHeaders.Add("x-xbl-contract-version", "4");
+                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
+                client.DefaultRequestHeaders.Add("accept", "application/json");
+                client.DefaultRequestHeaders.Add("accept-language", currentSystemLanguage);
+                client.DefaultRequestHeaders.Add("Authorization", MainWindow.xauthtoken);
+                client.DefaultRequestHeaders.Add("Host", "achievements.xboxlive.com");
+                client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
+                ALForm.aJsonresponse = (dynamic)(new JObject());
+                ALForm.aJsonresponse = (dynamic)JObject.Parse(responseString);
+                ALForm.PopulateAchievementList();
+            }
+            catch (HttpRequestException ex)
+            {
+
+                if ((int)ex.StatusCode == 401)
+                    MessageBox.Show("Couldnt find xauth. Go click the FuckyWucky Fixer button until this doesnt happen.", "401 Unauthorised");
+                else
+                    MessageBox.Show("something did a fucky wucky and I dont have a specific message for the error code", "fucky wucky");
+            }
+
+
+        }
+
+
 
         private void BTN_SpoofGame_Click(object sender, EventArgs e)
         {
@@ -437,6 +495,7 @@ namespace Xbox_Achievement_Unlocker
                 Jsonresponse = (dynamic)JObject.Parse(responseString);
                 LBL_Gamertag.Text = "Gamertag: " + Jsonresponse.profileUsers[0].settings[0].value;
                 LBL_Gamerscore.Text = "Gamerscore: " + Jsonresponse.profileUsers[0].settings[1].value;
+
                 TXT_Xuid.Text = "XUID: " + Jsonresponse.profileUsers[0].id;
                 xuid = Jsonresponse.profileUsers[0].id;
                 BTN_SpoofGame.Enabled = true;
@@ -520,6 +579,56 @@ namespace Xbox_Achievement_Unlocker
         private void TXT_Xauth_TextChanged(object sender, EventArgs e)
         {
             BTN_GrabXauth.Enabled = true;
+        }
+
+        private void LBL_Xauth_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void MainWindow_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label3_Click_1(object sender, EventArgs e)
+        {
+
+        }
+
+        private void LBL_Attached_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pictureBox1_Click_1(object sender, EventArgs e)
+        {
+
+        }
+
+        private void LBL_Gamerscore_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void TXT_GameFilterTitle_TextChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }
